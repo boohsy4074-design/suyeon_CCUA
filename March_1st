@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>명절 기간 매체 성과 분석 대시보드</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #060B14; }
+        #root { min-height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+        const {
+            LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+            Tooltip, Legend, ResponsiveContainer, ReferenceLine
+        } = Recharts;
+
+        // 데이터 및 설정 (원본 index.jsx 내용 반영)
+        const data = {
+            CTR: [
+                { period: "정상 밴드", GI: 1.07, GT: 0.82, META: 1.53 },
+                { period: "연휴 기간",  GI: 1.09, GT: 1.05, META: 1.30 },
+                { period: "2/19~2/23", GI: 1.13, GT: 0.86, META: 1.26 },
+                { period: "2/24~3/2",  GI: 1.09, GT: 0.82, META: 1.40 },
+                { period: "3/3 이후",  GI: 0.91, GT: 0.76, META: 1.64 },
+            ],
+            InstallCVR: [
+                { period: "정상 밴드", GI: 27.68, GT: 26.91, META: 25.31 },
+                { period: "연휴 기간",  GI: 28.01, GT: 30.05, META: 23.74 },
+                { period: "2/19~2/23", GI: 29.50, GT: 31.42, META: 25.53 },
+                { period: "2/24~3/2",  GI: 27.05, GT: 28.85, META: 23.66 },
+                { period: "3/3 이후",  GI: 25.40, GT: 29.30, META: 24.54 },
+            ],
+            CPI_MMP: [
+                { period: "정상 밴드", GI: 1784, GT: 2637, META: 1635 },
+                { period: "연휴 기간",  GI: 1481, GT: 2208, META: 1687 },
+                { period: "2/19~2/23", GI: 1542, GT: 2163, META: 1555 },
+                { period: "2/24~3/2",  GI: 1710, GT: 2588, META: 1824 },
+                { period: "3/3 이후",  GI: 1942, GT: 2671, META: 1782 },
+            ],
+            CPI_매체: [
+                { period: "정상 밴드", GI: 1221, GT: 2266, META: 1255 },
+                { period: "연휴 기간",  GI: 1136, GT: 1932, META: 1189 },
+                { period: "2/19~2/23", GI: 1179, GT: 1899, META: 1200 },
+                { period: "2/24~3/2",  GI: 1206, GT: 2119, META: 1316 },
+                { period: "3/3 이후",  GI: 1371, GT: 2261, META: 1280 },
+            ],
+            CPA_MMP: [
+                { period: "정상 밴드", GI: 49905, GT: 36754, META: 32949 },
+                { period: "연휴 기간",  GI: 74794, GT: 46464, META: 33341 },
+                { period: "2/19~2/23", GI: 35219, GT: 24924, META: 19119 },
+                { period: "2/24~3/2",  GI: 60609, GT: 32180, META: 27624 },
+                { period: "3/3 이후",  GI: 59776, GT: 28457, META: 42233 },
+            ],
+        };
+
+        const baselines = {
+            CTR:        { GI: 1.07,  GT: 0.82,  META: 1.53 },
+            InstallCVR: { GI: 27.68, GT: 26.91, META: 25.31 },
+            CPI_MMP:    { GI: 1784,  GT: 2637,  META: 1635 },
+            CPI_매체:   { GI: 1221,  GT: 2266,  META: 1255 },
+            CPA_MMP:    { GI: 49905, GT: 36754, META: 32949 },
+        };
+
+        const COLORS = { GI: "#60A5FA", GT: "#F472B6", META: "#34D399" };
+        const BASELINE_COLOR = "#FACC15";
+
+        const formatKRW = (v) => `₩${Number(v).toLocaleString()}`;
+        const formatPct = (v) => `${v}%`;
+
+        const charts = [
+            { key: "CTR",        label: "CTR (%)",        fmt: formatPct, unit: "%",  yDomain: [0.5, 1.8] },
+            { key: "InstallCVR", label: "Install CVR (%)", fmt: formatPct, unit: "%",  yDomain: [15, 35] },
+            { key: "CPI_MMP",   label: "CPI MMP (₩)",     fmt: formatKRW, unit: "₩", yDomain: [1200, 2800] },
+            { key: "CPI_매체",  label: "CPI 매체 (₩)",    fmt: formatKRW, unit: "₩", yDomain: [900, 2400] },
+            { key: "CPA_MMP",   label: "CPA MMP (₩)",     fmt: formatKRW, unit: "₩", yDomain: [10000, 80000] },
+        ];
+
+        const CustomTooltip = ({ active, payload, label, fmt }) => {
+            if (!active || !payload?.length) return null;
+            return (
+                <div style={{
+                    background: "#0F172A", border: "1px solid #334155",
+                    borderRadius: 8, padding: "10px 14px", fontSize: 13
+                }}>
+                    <p style={{ color: "#E2E8F0", marginBottom: 6, fontWeight: 600 }}>{label}</p>
+                    {payload.map(p => (
+                        <p key={p.dataKey} style={{ color: p.color, margin: "2px 0" }}>
+                            {p.dataKey}: <strong>{fmt(p.value)}</strong>
+                        </p>
+                    ))}
+                </div>
+            );
+        };
+
+        function Dashboard() {
+            const [activeChart, setActiveChart] = useState("CTR");
+            const chart = charts.find(c => c.key === activeChart);
+            const chartData = data[activeChart];
+            const baseline = baselines[activeChart];
+
+            return (
+                <div style={{
+                    minHeight: "100vh",
+                    background: "#060B14",
+                    color: "#E2E8F0",
+                    fontFamily: "sans-serif",
+                    padding: "40px 32px",
+                }}>
+                    <div style={{ marginBottom: 36 }}>
+                        <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>명절 기간 매체 성과 분석</h1>
+                        <p style={{ color: "#94A3B8", fontSize: 14 }}>GI · GT · META — 5개 기간 비교</p>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginBottom: 32, flexWrap: "wrap" }}>
+                        {charts.map(c => (
+                            <button key={c.key} onClick={() => setActiveChart(c.key)} style={{
+                                padding: "8px 18px", borderRadius: 6, border: "none", cursor: "pointer",
+                                background: activeChart === c.key ? "#3B82F6" : "#0F172A",
+                                color: "#fff", fontWeight: 600
+                            }}>{c.label}</button>
+                        ))}
+                    </div>
+
+                    <div style={{ background: "#0F172A", borderRadius: 16, padding: "28px 24px", border: "1px solid #1E293B", marginBottom: 32 }}>
+                        <h2 style={{ fontSize: 16, marginBottom: 20 }}>{chart.label} 추이</h2>
+                        <ResponsiveContainer width="100%" height={340}>
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                                <XAxis dataKey="period" stroke="#CBD5E1" />
+                                <YAxis stroke="#CBD5E1" domain={chart.yDomain} />
+                                <Tooltip content={<CustomTooltip fmt={chart.fmt} />} />
+                                <Legend />
+                                {["GI", "GT", "META"].map(k => (
+                                    <Line key={k} type="monotone" dataKey={k} stroke={COLORS[k]} strokeWidth={2.5} />
+                                ))}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>
